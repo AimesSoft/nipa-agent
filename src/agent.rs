@@ -42,7 +42,11 @@ pub struct AgentConfig {
 }
 
 impl AgentConfig {
-    pub fn new(provider: ModelProviderInfo, model: impl Into<String>, result_schema: Value) -> Self {
+    pub fn new(
+        provider: ModelProviderInfo,
+        model: impl Into<String>,
+        result_schema: Value,
+    ) -> Self {
         Self {
             provider,
             model: model.into(),
@@ -72,9 +76,20 @@ pub struct TokenTotals {
 
 #[derive(Debug)]
 pub enum TaskOutcome {
-    Completed { result: Value, rounds_used: u32, usage: TokenTotals },
-    Failed { reason: FailReason, message: String, rounds_used: u32, usage: TokenTotals },
-    Aborted { reason: AbortReason },
+    Completed {
+        result: Value,
+        rounds_used: u32,
+        usage: TokenTotals,
+    },
+    Failed {
+        reason: FailReason,
+        message: String,
+        rounds_used: u32,
+        usage: TokenTotals,
+    },
+    Aborted {
+        reason: AbortReason,
+    },
 }
 
 pub struct Agent {
@@ -165,7 +180,11 @@ impl Agent {
         let outcome = self.run_inner(task, started, &mut sink).await;
 
         match &outcome {
-            TaskOutcome::Completed { result, rounds_used, .. } => {
+            TaskOutcome::Completed {
+                result,
+                rounds_used,
+                ..
+            } => {
                 info!(task = %self.cfg.task_id, rounds = rounds_used, "task completed");
                 sink.emit(AgentEvent::TaskCompleted {
                     result: result.clone(),
@@ -173,7 +192,12 @@ impl Agent {
                     duration_ms: started.elapsed().as_millis() as u64,
                 });
             }
-            TaskOutcome::Failed { reason, message, rounds_used, .. } => {
+            TaskOutcome::Failed {
+                reason,
+                message,
+                rounds_used,
+                ..
+            } => {
                 warn!(task = %self.cfg.task_id, ?reason, %message, "task failed");
                 sink.emit(AgentEvent::TaskFailed {
                     reason: *reason,
@@ -203,8 +227,10 @@ impl Agent {
             .collect();
         let known_tools_ref: Vec<&str> = known_tools.iter().map(String::as_str).collect();
 
-        let mut messages =
-            vec![ChatMessage::system(task.system_prompt), ChatMessage::user(task.user_message)];
+        let mut messages = vec![
+            ChatMessage::system(task.system_prompt),
+            ChatMessage::user(task.user_message),
+        ];
         let mut usage = TokenTotals::default();
         let mut text_only_strikes: u32 = 0;
         // (tool, normalized args) → successful output. Duplicate calls are
@@ -216,28 +242,41 @@ impl Agent {
 
         for round in 1..=self.cfg.max_rounds {
             if self.cfg.cancel.is_cancelled() {
-                return TaskOutcome::Aborted { reason: AbortReason::UserCancelled };
+                return TaskOutcome::Aborted {
+                    reason: AbortReason::UserCancelled,
+                };
             }
-            sink.emit(AgentEvent::RoundStarted { round, max_rounds: self.cfg.max_rounds });
+            sink.emit(AgentEvent::RoundStarted {
+                round,
+                max_rounds: self.cfg.max_rounds,
+            });
 
             let resp = {
                 // Borrow-splitting: the retry callback needs the sink.
                 let sink_ref = &mut *sink;
                 self.client
-                    .chat(&self.cfg.model, &messages, &api_tools, &self.cfg.cancel, |notice| {
-                        sink_ref.emit(AgentEvent::Retrying {
-                            attempt: notice.attempt,
-                            max_attempts: notice.max_attempts,
-                            message: notice.message,
-                        });
-                    })
+                    .chat(
+                        &self.cfg.model,
+                        &messages,
+                        &api_tools,
+                        &self.cfg.cancel,
+                        |notice| {
+                            sink_ref.emit(AgentEvent::Retrying {
+                                attempt: notice.attempt,
+                                max_attempts: notice.max_attempts,
+                                message: notice.message,
+                            });
+                        },
+                    )
                     .await
             };
 
             let resp = match resp {
                 Ok(r) => r,
                 Err(AgentError::Cancelled) => {
-                    return TaskOutcome::Aborted { reason: AbortReason::UserCancelled }
+                    return TaskOutcome::Aborted {
+                        reason: AbortReason::UserCancelled,
+                    }
                 }
                 Err(e) => {
                     let reason = match &e {
@@ -264,7 +303,12 @@ impl Agent {
                 });
             }
 
-            let mut assistant = resp.choices.into_iter().next().expect("non-empty choices").message;
+            let mut assistant = resp
+                .choices
+                .into_iter()
+                .next()
+                .expect("non-empty choices")
+                .message;
 
             // --- tool call extraction (structured first, pseudo fallback) ---
             let mut tool_calls: Vec<ToolCall> = std::mem::take(&mut assistant.tool_calls);
@@ -292,7 +336,9 @@ impl Agent {
                 }
             }
             if !content_text.is_empty() && assistant.content.is_some() {
-                sink.emit(AgentEvent::AssistantMessage { text: content_text.clone() });
+                sink.emit(AgentEvent::AssistantMessage {
+                    text: content_text.clone(),
+                });
             }
 
             // Strip provider-quirk fields before the message re-enters history
@@ -326,8 +372,9 @@ impl Agent {
             text_only_strikes = 0;
 
             // --- submit_result check (terminate semantics, pi-style) ---
-            if let Some(call) =
-                tool_calls.iter().find(|c| c.function.name == SUBMIT_RESULT_TOOL)
+            if let Some(call) = tool_calls
+                .iter()
+                .find(|c| c.function.name == SUBMIT_RESULT_TOOL)
             {
                 match serde_json::from_str::<Value>(&call.function.arguments) {
                     Ok(result) if result.is_object() => {
@@ -555,8 +602,10 @@ fn canonicalize(v: &Value) -> Value {
     match v {
         Value::Object(map) => {
             // BTreeMap iteration is key-sorted.
-            let sorted: std::collections::BTreeMap<_, _> =
-                map.iter().map(|(k, val)| (k.clone(), canonicalize(val))).collect();
+            let sorted: std::collections::BTreeMap<_, _> = map
+                .iter()
+                .map(|(k, val)| (k.clone(), canonicalize(val)))
+                .collect();
             Value::Object(sorted.into_iter().collect())
         }
         Value::Array(items) => Value::Array(items.iter().map(canonicalize).collect()),

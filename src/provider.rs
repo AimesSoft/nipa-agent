@@ -139,9 +139,15 @@ mod tests {
     #[test]
     fn url_join_handles_trailing_slash() {
         let p = ModelProviderInfo::new("x", "https://api.example.com/v1/");
-        assert_eq!(p.chat_completions_url(), "https://api.example.com/v1/chat/completions");
+        assert_eq!(
+            p.chat_completions_url(),
+            "https://api.example.com/v1/chat/completions"
+        );
         let p = ModelProviderInfo::new("x", "https://api.example.com/v1");
-        assert_eq!(p.chat_completions_url(), "https://api.example.com/v1/chat/completions");
+        assert_eq!(
+            p.chat_completions_url(),
+            "https://api.example.com/v1/chat/completions"
+        );
     }
 
     #[test]

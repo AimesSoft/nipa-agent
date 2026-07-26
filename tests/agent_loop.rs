@@ -34,7 +34,9 @@ impl Tool for SearchTool {
             if q.is_empty() {
                 return Err(ToolError::RespondToModel("query must not be empty".into()));
             }
-            Ok(ToolOutput::json(&json!({"results": [{"id": 209867, "name": "葬送的芙莉莲"}]})))
+            Ok(ToolOutput::json(
+                &json!({"results": [{"id": 209867, "name": "葬送的芙莉莲"}]}),
+            ))
         })
     }
 }
@@ -110,7 +112,11 @@ async fn two_round_happy_path() {
         fn respond(&self, _req: &Request) -> ResponseTemplate {
             let n = self.n.fetch_add(1, Ordering::SeqCst);
             let body = if n == 0 {
-                assistant_tool_call_body("search_tmdb", r#"{"query":"Sousou no Frieren"}"#, "tool_calls")
+                assistant_tool_call_body(
+                    "search_tmdb",
+                    r#"{"query":"Sousou no Frieren"}"#,
+                    "tool_calls",
+                )
             } else {
                 assistant_tool_call_body(
                     "submit_result",
@@ -124,15 +130,23 @@ async fn two_round_happy_path() {
 
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
-        .respond_with(Sequenced { n: AtomicU32::new(0) })
+        .respond_with(Sequenced {
+            n: AtomicU32::new(0),
+        })
         .mount(&server)
         .await;
 
-    let tool = Arc::new(SearchTool { calls: counter.clone() });
+    let tool = Arc::new(SearchTool {
+        calls: counter.clone(),
+    });
     let (outcome, events) = run_agent(&server, vec![tool]).await;
 
     match outcome {
-        TaskOutcome::Completed { result, rounds_used, usage } => {
+        TaskOutcome::Completed {
+            result,
+            rounds_used,
+            usage,
+        } => {
             assert_eq!(result["title"], "葬送的芙莉莲");
             assert_eq!(rounds_used, 2);
             assert_eq!(usage.input, 100);
@@ -146,8 +160,12 @@ async fn two_round_happy_path() {
     let last = events.last().unwrap();
     assert!(matches!(last, AgentEvent::TaskCompleted { .. }));
     assert_eq!(events.iter().filter(|e| e.is_terminal()).count(), 1);
-    assert!(events.iter().any(|e| matches!(e, AgentEvent::ToolCallBegin { tool, .. } if tool == "search_tmdb")));
-    assert!(events.iter().any(|e| matches!(e, AgentEvent::ToolCallEnd { success: true, .. })));
+    assert!(events
+        .iter()
+        .any(|e| matches!(e, AgentEvent::ToolCallBegin { tool, .. } if tool == "search_tmdb")));
+    assert!(events
+        .iter()
+        .any(|e| matches!(e, AgentEvent::ToolCallEnd { success: true, .. })));
 }
 
 /// DeepSeek trap: finish_reason "stop" but tool_calls present → must still dispatch.
@@ -176,12 +194,20 @@ async fn dispatches_tool_calls_despite_stop_finish_reason() {
     }
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
-        .respond_with(Sequenced { n: AtomicU32::new(0) })
+        .respond_with(Sequenced {
+            n: AtomicU32::new(0),
+        })
         .mount(&server)
         .await;
 
     let calls = Arc::new(AtomicU32::new(0));
-    let (outcome, _) = run_agent(&server, vec![Arc::new(SearchTool { calls: calls.clone() })]).await;
+    let (outcome, _) = run_agent(
+        &server,
+        vec![Arc::new(SearchTool {
+            calls: calls.clone(),
+        })],
+    )
+    .await;
     assert!(matches!(outcome, TaskOutcome::Completed { .. }));
     assert_eq!(calls.load(Ordering::SeqCst), 1);
 }
@@ -220,16 +246,29 @@ async fn recovers_pseudo_tool_call_from_text() {
     }
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
-        .respond_with(Sequenced { n: AtomicU32::new(0) })
+        .respond_with(Sequenced {
+            n: AtomicU32::new(0),
+        })
         .mount(&server)
         .await;
 
     let calls = Arc::new(AtomicU32::new(0));
-    let (outcome, events) =
-        run_agent(&server, vec![Arc::new(SearchTool { calls: calls.clone() })]).await;
+    let (outcome, events) = run_agent(
+        &server,
+        vec![Arc::new(SearchTool {
+            calls: calls.clone(),
+        })],
+    )
+    .await;
     assert!(matches!(outcome, TaskOutcome::Completed { .. }));
-    assert_eq!(calls.load(Ordering::SeqCst), 1, "pseudo call must be executed");
-    assert!(events.iter().any(|e| matches!(e, AgentEvent::Warning { .. })));
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        1,
+        "pseudo call must be executed"
+    );
+    assert!(events
+        .iter()
+        .any(|e| matches!(e, AgentEvent::Warning { .. })));
 }
 
 /// Malformed tool arguments → error fed back → model corrects itself.
@@ -251,7 +290,10 @@ async fn feeds_back_malformed_arguments_for_self_correction() {
                     let msgs = body["messages"].as_array().unwrap();
                     let last = msgs.last().unwrap();
                     assert_eq!(last["role"], "tool");
-                    assert!(last["content"].as_str().unwrap().contains("could not parse"));
+                    assert!(last["content"]
+                        .as_str()
+                        .unwrap()
+                        .contains("could not parse"));
                     assistant_tool_call_body("search_tmdb", r#"{"query":"Frieren"}"#, "tool_calls")
                 }
                 _ => assistant_tool_call_body(
@@ -265,12 +307,20 @@ async fn feeds_back_malformed_arguments_for_self_correction() {
     }
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
-        .respond_with(Sequenced { n: AtomicU32::new(0) })
+        .respond_with(Sequenced {
+            n: AtomicU32::new(0),
+        })
         .mount(&server)
         .await;
 
     let calls = Arc::new(AtomicU32::new(0));
-    let (outcome, _) = run_agent(&server, vec![Arc::new(SearchTool { calls: calls.clone() })]).await;
+    let (outcome, _) = run_agent(
+        &server,
+        vec![Arc::new(SearchTool {
+            calls: calls.clone(),
+        })],
+    )
+    .await;
     match outcome {
         TaskOutcome::Completed { rounds_used, .. } => assert_eq!(rounds_used, 3),
         other => panic!("expected Completed, got {other:?}"),
@@ -323,14 +373,19 @@ async fn retries_transient_server_errors() {
     }
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
-        .respond_with(FlakyThenSubmit { n: AtomicU32::new(0) })
+        .respond_with(FlakyThenSubmit {
+            n: AtomicU32::new(0),
+        })
         .mount(&server)
         .await;
 
     let (outcome, events) = run_agent(&server, vec![]).await;
     assert!(matches!(outcome, TaskOutcome::Completed { .. }));
     assert_eq!(
-        events.iter().filter(|e| matches!(e, AgentEvent::Retrying { .. })).count(),
+        events
+            .iter()
+            .filter(|e| matches!(e, AgentEvent::Retrying { .. }))
+            .count(),
         2
     );
 }
@@ -348,7 +403,11 @@ async fn auth_error_fails_fast() {
 
     let (outcome, _) = run_agent(&server, vec![]).await;
     match outcome {
-        TaskOutcome::Failed { reason, rounds_used, .. } => {
+        TaskOutcome::Failed {
+            reason,
+            rounds_used,
+            ..
+        } => {
             assert_eq!(reason, FailReason::ApiError);
             assert_eq!(rounds_used, 1);
         }
@@ -363,11 +422,13 @@ async fn round_budget_exhaustion() {
     // Model loops on the same tool forever.
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(assistant_tool_call_body(
-            "search_tmdb",
-            r#"{"query":"Frieren"}"#,
-            "tool_calls",
-        )))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(assistant_tool_call_body(
+                "search_tmdb",
+                r#"{"query":"Frieren"}"#,
+                "tool_calls",
+            )),
+        )
         .mount(&server)
         .await;
 
@@ -377,15 +438,24 @@ async fn round_budget_exhaustion() {
         "mock-model",
         result_schema(),
     );
-    cfg.tools = vec![Arc::new(SearchTool { calls: Arc::new(AtomicU32::new(0)) })];
+    cfg.tools = vec![Arc::new(SearchTool {
+        calls: Arc::new(AtomicU32::new(0)),
+    })];
     cfg.event_tx = Some(tx);
     cfg.max_rounds = 3;
     let agent = Agent::new(cfg).unwrap();
     let outcome = agent
-        .run(TaskInput { system_prompt: "s".into(), user_message: "u".into() })
+        .run(TaskInput {
+            system_prompt: "s".into(),
+            user_message: "u".into(),
+        })
         .await;
     match outcome {
-        TaskOutcome::Failed { reason, rounds_used, .. } => {
+        TaskOutcome::Failed {
+            reason,
+            rounds_used,
+            ..
+        } => {
             assert_eq!(reason, FailReason::RoundBudgetExhausted);
             assert_eq!(rounds_used, 3);
         }
@@ -418,14 +488,19 @@ async fn cancellation_aborts() {
         "mock-model",
         result_schema(),
     );
-    cfg.tools = vec![Arc::new(SearchTool { calls: Arc::new(AtomicU32::new(0)) })];
+    cfg.tools = vec![Arc::new(SearchTool {
+        calls: Arc::new(AtomicU32::new(0)),
+    })];
     cfg.event_tx = Some(tx);
     cfg.cancel = cancel.clone();
     let agent = Agent::new(cfg).unwrap();
 
     let run = tokio::spawn(async move {
         agent
-            .run(TaskInput { system_prompt: "s".into(), user_message: "u".into() })
+            .run(TaskInput {
+                system_prompt: "s".into(),
+                user_message: "u".into(),
+            })
             .await
     });
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
@@ -437,7 +512,10 @@ async fn cancellation_aborts() {
     while let Ok(env) = rx.try_recv() {
         events.push(env.event);
     }
-    assert!(matches!(events.last().unwrap(), AgentEvent::TaskAborted { .. }));
+    assert!(matches!(
+        events.last().unwrap(),
+        AgentEvent::TaskAborted { .. }
+    ));
 }
 
 /// Sequence numbers are contiguous from 0 and the terminal event is last.
@@ -446,11 +524,13 @@ async fn event_seq_contiguous() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(assistant_tool_call_body(
-            "submit_result",
-            r#"{"title":"T","confidence":"low"}"#,
-            "tool_calls",
-        )))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(assistant_tool_call_body(
+                "submit_result",
+                r#"{"title":"T","confidence":"low"}"#,
+                "tool_calls",
+            )),
+        )
         .mount(&server)
         .await;
 
@@ -464,7 +544,10 @@ async fn event_seq_contiguous() {
     cfg.task_id = "seq-test".into();
     let agent = Agent::new(cfg).unwrap();
     agent
-        .run(TaskInput { system_prompt: "s".into(), user_message: "u".into() })
+        .run(TaskInput {
+            system_prompt: "s".into(),
+            user_message: "u".into(),
+        })
         .await;
 
     let mut seqs = Vec::new();
@@ -490,8 +573,14 @@ async fn duplicate_calls_served_from_memory() {
             let n = self.n.fetch_add(1, Ordering::SeqCst);
             let body = match n {
                 // Same call twice (key order differs — must still dedup).
-                0 => assistant_tool_call_body("search_tmdb", r#"{"query":"Frieren"}"#, "tool_calls"),
-                1 => assistant_tool_call_body("search_tmdb", r#"{ "query" : "Frieren" }"#, "tool_calls"),
+                0 => {
+                    assistant_tool_call_body("search_tmdb", r#"{"query":"Frieren"}"#, "tool_calls")
+                }
+                1 => assistant_tool_call_body(
+                    "search_tmdb",
+                    r#"{ "query" : "Frieren" }"#,
+                    "tool_calls",
+                ),
                 2 => {
                     // The dedup note must be visible to the model.
                     let body: Value = serde_json::from_slice(&req.body).unwrap();
@@ -512,14 +601,26 @@ async fn duplicate_calls_served_from_memory() {
     }
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
-        .respond_with(Sequenced { n: AtomicU32::new(0) })
+        .respond_with(Sequenced {
+            n: AtomicU32::new(0),
+        })
         .mount(&server)
         .await;
 
     let calls = Arc::new(AtomicU32::new(0));
-    let (outcome, _) = run_agent(&server, vec![Arc::new(SearchTool { calls: calls.clone() })]).await;
+    let (outcome, _) = run_agent(
+        &server,
+        vec![Arc::new(SearchTool {
+            calls: calls.clone(),
+        })],
+    )
+    .await;
     assert!(matches!(outcome, TaskOutcome::Completed { .. }));
-    assert_eq!(calls.load(Ordering::SeqCst), 1, "backend must be hit exactly once");
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        1,
+        "backend must be hit exactly once"
+    );
 }
 
 /// Oversized tool output is truncated before reaching the model.
@@ -555,7 +656,11 @@ async fn oversized_tool_output_truncated() {
                 let msgs = body["messages"].as_array().unwrap();
                 let tool_msg = msgs.last().unwrap();
                 let content = tool_msg["content"].as_str().unwrap();
-                assert!(content.len() < 20_000, "tool output not truncated: {} bytes", content.len());
+                assert!(
+                    content.len() < 20_000,
+                    "tool output not truncated: {} bytes",
+                    content.len()
+                );
                 assert!(content.contains("output truncated"));
                 assistant_tool_call_body(
                     "submit_result",
@@ -568,7 +673,9 @@ async fn oversized_tool_output_truncated() {
     }
     Mock::given(method("POST"))
         .and(path("/v1/chat/completions"))
-        .respond_with(Sequenced { n: AtomicU32::new(0) })
+        .respond_with(Sequenced {
+            n: AtomicU32::new(0),
+        })
         .mount(&server)
         .await;
 

@@ -1,5 +1,8 @@
 # nipa-agent
 
+[![CI](https://github.com/AimesSoft/nipa-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/AimesSoft/nipa-agent/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Minimal tool-calling agent runtime for AI media scraping, in Rust.
 
 Speaks **OpenAI-compatible Chat Completions** (non-streaming) against any provider —
@@ -7,7 +10,7 @@ Gemini / DeepSeek / Qwen / GLM / Groq / OpenRouter / Ollama / any `base_url` —
 runs a bounded tool-calling loop, and terminates when the model calls the
 reserved `submit_result` tool.
 
-Built for [NipaServer](../) (AI-scraping media server) and for embedding into
+Built for [NipaServer](https://github.com/AimesSoft/nipaserver) (AI-scraping media server) and for embedding into
 NipaPlay via flutter_rust_bridge. Design borrowed from
 [openai/codex](https://github.com/openai/codex) (event protocol, tool executor
 split, provider config, retry classification) and
@@ -31,6 +34,17 @@ framework covers for you anyway:
   honored; auth errors fail fast.
 
 ## Usage
+
+Until the crate is published to crates.io, pin an exact Git tag:
+
+```toml
+nipa-agent = { git = "https://github.com/AimesSoft/nipa-agent.git", tag = "v0.1.0" }
+```
+
+NipaServer checks out the same tagged source as a pinned Git submodule and
+uses a local path dependency for reproducible container and offline builds.
+
+The minimum supported Rust version is 1.88.
 
 ```rust
 use std::sync::Arc;
@@ -98,10 +112,21 @@ line). Invariants:
 
 ## Testing
 
-`cargo test` — unit tests plus a wiremock-backed integration suite covering
+`cargo test --all-targets` — unit tests plus a wiremock-backed integration suite covering
 the happy path, every quirk above, retry/backoff, cancellation, and event
 invariants. No network, no API keys.
 
+Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Please
+report vulnerabilities through the private process in [SECURITY.md](SECURITY.md).
+
+## Versioning
+
+Releases follow [Semantic Versioning](https://semver.org/). During `0.x`, a
+minor bump may contain breaking API changes; patch releases remain backward
+compatible. Every release has an annotated `vX.Y.Z` Git tag and an entry in
+[CHANGELOG.md](CHANGELOG.md). The release procedure is documented in
+[RELEASING.md](RELEASING.md).
+
 ## License
 
-MIT
+[MIT](LICENSE)

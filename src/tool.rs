@@ -22,11 +22,15 @@ pub struct ToolOutput {
 
 impl ToolOutput {
     pub fn text(content: impl Into<String>) -> Self {
-        Self { content: content.into() }
+        Self {
+            content: content.into(),
+        }
     }
 
     pub fn json(value: &Value) -> Self {
-        Self { content: value.to_string() }
+        Self {
+            content: value.to_string(),
+        }
     }
 }
 

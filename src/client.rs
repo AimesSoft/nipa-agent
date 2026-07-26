@@ -33,7 +33,11 @@ impl ChatClient {
             .connect_timeout(Duration::from_secs(15))
             .build()
             .map_err(|e| AgentError::Config(format!("failed to build http client: {e}")))?;
-        Ok(Self { http, provider, api_key })
+        Ok(Self {
+            http,
+            provider,
+            api_key,
+        })
     }
 
     pub fn provider(&self) -> &ModelProviderInfo {
@@ -100,7 +104,10 @@ impl ChatClient {
             self.provider.compat.send_tool_choice,
             &self.provider.extra_body,
         );
-        let mut req = self.http.post(self.provider.chat_completions_url()).json(&body);
+        let mut req = self
+            .http
+            .post(self.provider.chat_completions_url())
+            .json(&body);
         if let Some(key) = &self.api_key {
             req = req.bearer_auth(key);
         }
@@ -157,8 +164,10 @@ fn classify_http_error(status: u16, body: String, retry_after: Option<Duration>)
             // Context-window errors come back as 400 with provider-specific
             // wording; catch the common phrasings.
             let lower = body.to_lowercase();
-            if lower.contains("context length") || lower.contains("context_length")
-                || lower.contains("maximum context") || lower.contains("token limit")
+            if lower.contains("context length")
+                || lower.contains("context_length")
+                || lower.contains("maximum context")
+                || lower.contains("token limit")
             {
                 AgentError::ContextWindowExceeded
             } else {
@@ -187,17 +196,32 @@ mod tests {
 
     #[test]
     fn http_error_classification() {
-        assert!(matches!(classify_http_error(401, String::new(), None), AgentError::Auth(..)));
+        assert!(matches!(
+            classify_http_error(401, String::new(), None),
+            AgentError::Auth(..)
+        ));
         assert!(matches!(
             classify_http_error(429, String::new(), Some(Duration::from_secs(2))),
-            AgentError::RateLimited { retry_after: Some(_) }
+            AgentError::RateLimited {
+                retry_after: Some(_)
+            }
         ));
-        assert!(matches!(classify_http_error(400, "bad".into(), None), AgentError::BadRequest(..)));
         assert!(matches!(
-            classify_http_error(400, "This model's maximum context length is 65536".into(), None),
+            classify_http_error(400, "bad".into(), None),
+            AgentError::BadRequest(..)
+        ));
+        assert!(matches!(
+            classify_http_error(
+                400,
+                "This model's maximum context length is 65536".into(),
+                None
+            ),
             AgentError::ContextWindowExceeded
         ));
-        assert!(matches!(classify_http_error(500, String::new(), None), AgentError::Server(..)));
+        assert!(matches!(
+            classify_http_error(500, String::new(), None),
+            AgentError::Server(..)
+        ));
         // 4xx must NOT be retryable (a wrong model name would burn retries).
         assert!(!classify_http_error(404, String::new(), None).is_retryable());
     }

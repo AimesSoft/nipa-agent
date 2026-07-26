@@ -113,7 +113,10 @@ pub(crate) fn build_request_body(
 ) -> Value {
     let mut body = Map::new();
     body.insert("model".into(), Value::String(model.into()));
-    body.insert("messages".into(), serde_json::to_value(messages).expect("messages serialize"));
+    body.insert(
+        "messages".into(),
+        serde_json::to_value(messages).expect("messages serialize"),
+    );
     body.insert("tools".into(), Value::Array(tools.to_vec()));
     if send_tool_choice {
         body.insert("tool_choice".into(), Value::String("auto".into()));

@@ -66,7 +66,8 @@ impl AgentError {
         )
     }
 
-    /// Server-mandated delay (Retry-After). Takes precedence over [`backoff`].
+    /// Server-mandated delay (`Retry-After`). Takes precedence over the
+    /// runtime's exponential backoff.
     pub fn retry_delay(&self) -> Option<Duration> {
         match self {
             AgentError::RateLimited { retry_after } => *retry_after,
@@ -94,8 +95,16 @@ mod tests {
         for attempt in 1..=5u32 {
             let d = backoff(attempt).as_millis() as f64;
             let base = 200.0 * 2f64.powi(attempt as i32 - 1);
-            assert!(d >= base * 0.9 - 1.0, "attempt {attempt}: {d} < {}", base * 0.9);
-            assert!(d <= base * 1.1 + 1.0, "attempt {attempt}: {d} > {}", base * 1.1);
+            assert!(
+                d >= base * 0.9 - 1.0,
+                "attempt {attempt}: {d} < {}",
+                base * 0.9
+            );
+            assert!(
+                d <= base * 1.1 + 1.0,
+                "attempt {attempt}: {d} > {}",
+                base * 1.1
+            );
         }
     }
 

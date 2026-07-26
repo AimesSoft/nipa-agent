@@ -32,9 +32,7 @@ pub const SUBMIT_RESULT_TOOL: &str = "submit_result";
 
 pub use agent::{Agent, AgentConfig, TaskInput, TaskOutcome, TokenTotals};
 pub use client::{ChatClient, RetryNotice};
-pub use conversation::{
-    Conversation, ConversationConfig, ConversationOutcome, ToolInteraction,
-};
+pub use conversation::{Conversation, ConversationConfig, ConversationOutcome, ToolInteraction};
 pub use error::AgentError;
 pub use events::{AbortReason, AgentEvent, AgentEventEnvelope, FailReason};
 pub use provider::{CompatFlags, ModelProviderInfo};

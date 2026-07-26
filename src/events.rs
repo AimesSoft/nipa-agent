@@ -132,7 +132,10 @@ mod tests {
             task_id: "t1".into(),
             seq: 3,
             ts_ms: 1_700_000_000_000,
-            event: AgentEvent::RoundStarted { round: 2, max_rounds: 16 },
+            event: AgentEvent::RoundStarted {
+                round: 2,
+                max_rounds: 16,
+            },
         };
         let v = serde_json::to_value(&env).unwrap();
         assert_eq!(v["type"], "round_started");

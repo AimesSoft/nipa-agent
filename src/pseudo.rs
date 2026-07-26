@@ -22,7 +22,9 @@ pub(crate) fn detect_pseudo_tool_call(content: &str, known_tools: &[&str]) -> Op
     let (name, args) = if let Some(func) = obj.get("function").and_then(Value::as_object) {
         (
             func.get("name").and_then(Value::as_str)?,
-            func.get("arguments").cloned().unwrap_or(Value::Object(Default::default())),
+            func.get("arguments")
+                .cloned()
+                .unwrap_or(Value::Object(Default::default())),
         )
     } else {
         let name = obj
@@ -50,7 +52,10 @@ pub(crate) fn detect_pseudo_tool_call(content: &str, known_tools: &[&str]) -> Op
     Some(ToolCall {
         id: format!("pseudo_{}", fastrand::u64(..)),
         call_type: "function".into(),
-        function: FunctionCall { name: name.to_string(), arguments },
+        function: FunctionCall {
+            name: name.to_string(),
+            arguments,
+        },
     })
 }
 
@@ -137,7 +142,9 @@ mod tests {
         assert!(detect_pseudo_tool_call(r#"{"name": "rm_rf", "arguments": {}}"#, TOOLS).is_none());
         assert!(detect_pseudo_tool_call("根据字幕内容这是《芙莉莲》第 3 集。", TOOLS).is_none());
         // JSON that mentions a tool name but isn't a call shape
-        assert!(detect_pseudo_tool_call(r#"{"note": "search_tmdb found nothing"}"#, TOOLS).is_none());
+        assert!(
+            detect_pseudo_tool_call(r#"{"note": "search_tmdb found nothing"}"#, TOOLS).is_none()
+        );
     }
 
     #[test]

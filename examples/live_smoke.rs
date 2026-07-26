@@ -47,11 +47,39 @@ impl Tool for SearchTmdb {
         Box::pin(async move {
             let q = args["query"].as_str().unwrap_or_default().to_lowercase();
             let corpus = [
-                (209867, "葬送的芙莉莲", "葬送のフリーレン", "Sousou no Frieren / Frieren: Beyond Journey's End", 2023, "tv"),
-                (240411, "败犬女主太多了！", "負けヒロインが多すぎる！", "Make Heroine ga Oosugiru! / Too Many Losing Heroines!", 2024, "tv"),
-                (569094, "蜘蛛侠：纵横宇宙", "Spider-Man: Across the Spider-Verse", "", 2023, "movie"),
+                (
+                    209867,
+                    "葬送的芙莉莲",
+                    "葬送のフリーレン",
+                    "Sousou no Frieren / Frieren: Beyond Journey's End",
+                    2023,
+                    "tv",
+                ),
+                (
+                    240411,
+                    "败犬女主太多了！",
+                    "負けヒロインが多すぎる！",
+                    "Make Heroine ga Oosugiru! / Too Many Losing Heroines!",
+                    2024,
+                    "tv",
+                ),
+                (
+                    569094,
+                    "蜘蛛侠：纵横宇宙",
+                    "Spider-Man: Across the Spider-Verse",
+                    "",
+                    2023,
+                    "movie",
+                ),
                 (37854, "海贼王", "ONE PIECE", "One Piece", 1999, "tv"),
-                (65930, "我的英雄学院", "僕のヒーローアカデミア", "Boku no Hero Academia", 2016, "tv"),
+                (
+                    65930,
+                    "我的英雄学院",
+                    "僕のヒーローアカデミア",
+                    "Boku no Hero Academia",
+                    2016,
+                    "tv",
+                ),
             ];
             let hits: Vec<Value> = corpus
                 .iter()
@@ -129,7 +157,12 @@ impl Tool for SearchBangumi {
             let q = args["keyword"].as_str().unwrap_or_default().to_lowercase();
             let corpus = [
                 (400602, "葬送のフリーレン", "葬送的芙莉莲", "2023-09-29"),
-                (425998, "負けヒロインが多すぎる！", "败犬女主太多了！", "2024-07-14"),
+                (
+                    425998,
+                    "負けヒロインが多すぎる！",
+                    "败犬女主太多了！",
+                    "2024-07-14",
+                ),
             ];
             let hits: Vec<Value> = corpus
                 .iter()
@@ -237,7 +270,11 @@ async fn main() {
         let provider =
             ModelProviderInfo::new("live", base_url.clone()).with_api_key(api_key.clone());
         let mut cfg = AgentConfig::new(provider, model.clone(), result_schema());
-        cfg.tools = vec![Arc::new(SearchTmdb), Arc::new(GetTmdbSeason), Arc::new(SearchBangumi)];
+        cfg.tools = vec![
+            Arc::new(SearchTmdb),
+            Arc::new(GetTmdbSeason),
+            Arc::new(SearchBangumi),
+        ];
         cfg.task_id = format!("smoke-{}", case.name);
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
         cfg.event_tx = Some(tx);
@@ -247,12 +284,20 @@ async fn main() {
                 let v = serde_json::to_value(&env).unwrap();
                 match v["type"].as_str().unwrap_or("") {
                     "tool_call_begin" => {
-                        println!("  → {}({})", v["tool"].as_str().unwrap_or(""), v["arguments"])
+                        println!(
+                            "  → {}({})",
+                            v["tool"].as_str().unwrap_or(""),
+                            v["arguments"]
+                        )
                     }
                     "tool_call_end" => println!(
                         "  ← {} {} ({}ms)",
                         v["tool"].as_str().unwrap_or(""),
-                        if v["success"].as_bool().unwrap_or(false) { "ok" } else { "ERR" },
+                        if v["success"].as_bool().unwrap_or(false) {
+                            "ok"
+                        } else {
+                            "ERR"
+                        },
                         v["duration_ms"]
                     ),
                     "round_started" => println!("  -- round {}/{}", v["round"], v["max_rounds"]),
@@ -278,7 +323,11 @@ async fn main() {
         let _ = printer.await;
 
         match outcome {
-            TaskOutcome::Completed { result, rounds_used, usage } => {
+            TaskOutcome::Completed {
+                result,
+                rounds_used,
+                usage,
+            } => {
                 println!(
                     "RESULT ({rounds_used} rounds, {}in/{}out tokens):\n{}",
                     usage.input,
@@ -287,7 +336,12 @@ async fn main() {
                 );
                 pass += 1;
             }
-            TaskOutcome::Failed { reason, message, rounds_used, .. } => {
+            TaskOutcome::Failed {
+                reason,
+                message,
+                rounds_used,
+                ..
+            } => {
                 println!("FAILED after {rounds_used} rounds: {reason:?}: {message}");
             }
             TaskOutcome::Aborted { reason } => println!("ABORTED: {reason:?}"),

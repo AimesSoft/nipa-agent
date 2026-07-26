@@ -135,16 +135,22 @@ impl Conversation {
 
             let resp = self
                 .client
-                .chat(&self.cfg.model, &messages, &api_tools, &self.cfg.cancel, |n| {
-                    emit(
-                        AgentEvent::Retrying {
-                            attempt: n.attempt,
-                            max_attempts: n.max_attempts,
-                            message: n.message,
-                        },
-                        &self.cfg.event_tx,
-                    );
-                })
+                .chat(
+                    &self.cfg.model,
+                    &messages,
+                    &api_tools,
+                    &self.cfg.cancel,
+                    |n| {
+                        emit(
+                            AgentEvent::Retrying {
+                                attempt: n.attempt,
+                                max_attempts: n.max_attempts,
+                                message: n.message,
+                            },
+                            &self.cfg.event_tx,
+                        );
+                    },
+                )
                 .await;
 
             let resp = match resp {
@@ -164,7 +170,12 @@ impl Conversation {
                 usage.output += u.completion_tokens;
             }
 
-            let mut assistant = resp.choices.into_iter().next().expect("non-empty choices").message;
+            let mut assistant = resp
+                .choices
+                .into_iter()
+                .next()
+                .expect("non-empty choices")
+                .message;
             let mut tool_calls: Vec<ToolCall> = std::mem::take(&mut assistant.tool_calls);
             for (i, call) in tool_calls.iter_mut().enumerate() {
                 if call.id.is_empty() {

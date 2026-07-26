@@ -5,6 +5,11 @@ edition = "2021"
 license = "MIT"
 description = "Minimal tool-calling agent runtime for AI media scraping, speaking OpenAI-compatible Chat Completions"
 repository = "https://github.com/AimesSoft/nipa-agent"
+homepage = "https://github.com/AimesSoft/nipa-agent"
+readme = "README.md"
+rust-version = "1.88"
+keywords = ["agent", "tool-calling", "llm", "openai"]
+categories = ["api-bindings"]
 
 [dependencies]
 fastrand = "2"
