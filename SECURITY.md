@@ -1,13 +1,17 @@
-# Security Policy
+# 安全政策
 
-Only the latest tagged `0.x` release and the current `main` branch are
-supported while the project is in active development.
+项目快速开发期间，只支持最新的 `0.x` 标签版本和当前 `main` 分支。
 
-Report vulnerabilities privately through GitHub's **Security → Report a
-vulnerability** flow for `AimesSoft/nipa-agent`. Do not open a public issue
-with working payloads, credentials or private model responses.
+请使用 `AimesSoft/nipa-agent` 仓库的 **Security → Report a vulnerability**
+私密报告功能。不要在公开 Issue 中提交可用攻击载荷、凭证或私人模型响应。
 
-Relevant reports include API-key exposure, unsafe URL or header handling,
-prompt/tool boundary violations, unbounded resource consumption, cancellation
-failures and event/transcript leakage. Security problems in an upstream model
-provider are out of scope unless the runtime handles its response unsafely.
+适合报告的问题包括：
+
+- API key 或敏感 header 泄漏；
+- 不安全的 URL、响应或历史消息处理；
+- prompt、工具和宿主权限边界被绕过；
+- 无界资源消耗或取消失效；
+- 事件流和 transcript 泄漏。
+
+上游模型服务自身的问题通常不在本项目范围内；但如果 runtime 对其响应处理不安全，
+仍属于应报告范围。
